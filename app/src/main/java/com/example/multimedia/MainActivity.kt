@@ -15,9 +15,13 @@ import com.example.multimedia.databinding.ActivityMainBinding
 import org.tensorflow.lite.task.vision.classifier.Classifications
 import java.text.NumberFormat
 import java.util.concurrent.Executors
+import android.speech.tts.TextToSpeech
+import android.util.Log
+import java.util.Locale
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
+    private lateinit var textToSpeech: TextToSpeech
     private lateinit var binding: ActivityMainBinding
     private lateinit var imageClassify: ImageClassify
 
@@ -36,10 +40,37 @@ class MainActivity : AppCompatActivity() {
 
         requestPermissionLauncher.launch(Manifest.permission.CAMERA)
 
+        textToSpeech = TextToSpeech(this, this)
+
+        binding.btnSpeak.setOnClickListener {
+            speakOut()
+        }
         startCamera()
 
     }
 
+    private fun speakOut() {
+        val text = binding.tvResult.text.toString()
+        textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "")
+    }
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = textToSpeech.setLanguage(Locale.US)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e("TTS", "Language not supported")
+            }
+        } else {
+            Log.e("TTS", "Initialization failed")
+        }
+    }
+
+    override fun onDestroy() {
+        if (textToSpeech.isSpeaking) {
+            textToSpeech.stop()
+        }
+        textToSpeech.shutdown()
+        super.onDestroy()
+    }
     private fun startCamera() {
 
         imageClassify =
@@ -61,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                                         it[0].categories.sortedByDescending { it?.score }
                                     val displayResult =
                                         sortedCategories.joinToString("\n") {
-                                            "${it.label} " + NumberFormat.getPercentInstance().format(it.score).trim()
+                                            "${it.label} "
                                         }
                                     binding.tvResult.text = displayResult
                                 }
